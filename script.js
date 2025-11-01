@@ -16,6 +16,9 @@ const cryptoSearch = document.getElementById('crypto-search');
 // برای ذخیره تب فعال فعلی
 let activeTab = 'gold-section';
 
+// کلید API صحیح navasan.tech
+const API_KEY = 'free6bPuGs1inMVBvfdMptJOrfRbmBR7';
+
 // تابع تنظیم تم بر اساس Telegram WebApp theme
 function setThemeByTelegram() {
     const webapp = window.Telegram?.WebApp;
@@ -306,22 +309,79 @@ function formatDollarPrice(price, includeDecimal = false) {
     }
 }
 
-// به‌روزرسانی زمان آخرین به‌روزرسانی
+// تابع تبدیل تاریخ میلادی به شمسی
+function gregorianToJalali(g_d, g_m, g_y) {
+    const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+    
+    let jy = g_y <= 1600 ? 0 : 979;
+    g_y -= g_y <= 1600 ? 621 : 1600;
+    
+    let gy2 = g_m > 2 ? g_y + 1 : g_y;
+    let days = 365 * g_y + Math.floor((gy2 + 3) / 4) - Math.floor((gy2 + 99) / 100) +
+               Math.floor((gy2 + 399) / 400) - 80 + g_d + g_d_m[g_m - 1];
+    
+    jy += 33 * Math.floor(days / 12053);
+    days %= 12053;
+    
+    jy += 4 * Math.floor(days / 1461);
+    days %= 1461;
+    
+    if (days > 365) {
+        jy += Math.floor((days - 1) / 365);
+        days = (days - 1) % 365;
+    }
+    
+    let jm, jd;
+    if (days < 186) {
+        jm = 1 + Math.floor(days / 31);
+        jd = 1 + days % 31;
+    } else {
+        jm = 7 + Math.floor((days - 186) / 30);
+        jd = 1 + (days - 186) % 30;
+    }
+    
+    return [jy, jm, jd];
+}
+
+// به‌روزرسانی زمان آخرین به‌روزرسانی - با تاریخ شمسی
 function updateLastUpdateTime() {
-    // تنظیم تاریخ و زمان فعلی - میلادی به شمسی تقریبی
     const now = new Date();
-    const year = 1404;
-    const month = 6;
-    const day = 13;
+    const [jalaliYear, jalaliMonth, jalaliDay] = gregorianToJalali(
+        now.getDate(),
+        now.getMonth() + 1,
+        now.getFullYear()
+    );
+    
     const hours = now.getHours();
     const minutes = now.getMinutes();
     
-    const persianDate = `${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+    const persianDate = `${jalaliYear}/${String(jalaliMonth).padStart(2, '0')}/${String(jalaliDay).padStart(2, '0')}`;
     const persianTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
     
     // نمایش زمان به‌روزرسانی
     if (updateTimeElement) {
         updateTimeElement.textContent = `آخرین به‌روزرسانی: ${persianDate} ساعت ${persianTime}`;
+    }
+}
+
+// دریافت داده‌ها از API navasan.tech
+async function fetchCurrencyRatesFromAPI() {
+    try {
+        console.log('دریافت داده‌ها از API navasan.tech...');
+        
+        const response = await fetch(`http://api.navasan.tech/latest/?api_key=${API_KEY}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('داده‌های API دریافت شد:', data);
+        
+        return data;
+    } catch (error) {
+        console.error('خطا در دریافت داده‌ها از API:', error);
+        return null;
     }
 }
 
@@ -346,15 +406,28 @@ function loadAllData() {
     }
 }
 
-// بارگذاری داده‌های طلا
-function loadGoldData() {
+// بارگذاری داده‌های طلا از API
+async function loadGoldData() {
     try {
+        console.log('بارگذاری داده‌های طلا...');
+        
         if (goldItemsContainer) {
             // نمایش لودینگ
             if (goldLoading) goldLoading.classList.remove('hidden');
             
-            // ساخت HTML و پر کردن طلا و سکه
-            const goldHTML = getGoldDataHTML();
+            // دریافت داده‌ها از API
+            const apiData = await fetchCurrencyRatesFromAPI();
+            
+            let goldHTML = '';
+            
+            if (apiData) {
+                // پردازش داده‌های دریافتی از API
+                goldHTML = getGoldDataFromAPI(apiData);
+            } else {
+                // استفاده از داده‌های پشتیبان
+                goldHTML = getGoldDataHTML();
+            }
+            
             goldItemsContainer.innerHTML = goldHTML;
             
             // پنهان کردن لودینگ
@@ -367,15 +440,28 @@ function loadGoldData() {
     }
 }
 
-// بارگذاری داده‌های ارز خارجی
-function loadCurrencyData() {
+// بارگذاری داده‌های ارز خارجی از API
+async function loadCurrencyData() {
     try {
+        console.log('بارگذاری داده‌های ارز خارجی...');
+        
         if (currencyItemsContainer) {
             // نمایش لودینگ
             if (currencyLoading) currencyLoading.classList.remove('hidden');
             
-            // ساخت HTML و پر کردن ارزهای خارجی
-            const currencyHTML = getCurrencyDataHTML();
+            // دریافت داده‌ها از API
+            const apiData = await fetchCurrencyRatesFromAPI();
+            
+            let currencyHTML = '';
+            
+            if (apiData) {
+                // پردازش داده‌های دریافتی از API
+                currencyHTML = getCurrencyDataFromAPI(apiData);
+            } else {
+                // استفاده از داده‌های پشتیبان
+                currencyHTML = getCurrencyDataHTML();
+            }
+            
             currencyItemsContainer.innerHTML = currencyHTML;
             
             // پنهان کردن لودینگ
@@ -389,8 +475,10 @@ function loadCurrencyData() {
 }
 
 // بارگذاری داده‌های ارز دیجیتال
-function loadCryptoData() {
+async function loadCryptoData() {
     try {
+        console.log('بارگذاری داده‌های ارز دیجیتال...');
+        
         // نمایش لودینگ
         if (cryptoLoading) cryptoLoading.classList.remove('hidden');
         
@@ -398,9 +486,10 @@ function loadCryptoData() {
         if (cryptoItemsContainer) cryptoItemsContainer.innerHTML = '';
         
         // دریافت داده‌های API
-        fetchCryptoData();
+        await fetchCryptoData();
     } catch (error) {
         console.error("خطا در بارگذاری داده‌های ارز دیجیتال:", error);
+        // مخفی کردن لودینگ در صورت خطا
         if (cryptoLoading) cryptoLoading.classList.add('hidden');
         if (currencyError) currencyError.classList.remove('hidden');
     }
@@ -427,11 +516,6 @@ async function fetchCryptoData() {
                 setupCryptoSearch();
             }
             
-            // مخفی کردن لودینگ
-            if (cryptoLoading) {
-                cryptoLoading.classList.add('hidden');
-            }
-            
         } else {
             throw new Error("داده‌های دریافتی از API معتبر نیستند");
         }
@@ -447,8 +531,8 @@ async function fetchCryptoData() {
             // تنظیم جستجوی ارزهای دیجیتال
             setupCryptoSearch();
         }
-        
-        // مخفی کردن لودینگ
+    } finally {
+        // مخفی کردن لودینگ در هر صورت
         if (cryptoLoading) {
             cryptoLoading.classList.add('hidden');
         }
@@ -474,6 +558,116 @@ function setupCryptoSearch() {
             });
         });
     }
+}
+
+// ساخت HTML برای داده‌های طلا از API
+function getGoldDataFromAPI(apiData) {
+    const goldSymbols = [
+        { key: '18ayar', name: 'طلای 18 عیار', unit: 'تومان' },
+        { key: 'abshodeh', name: 'طلای آب‌شده', unit: 'تومان' },
+        { key: 'usd_xau', name: 'انس طلا', unit: 'دلار' },
+        { key: 'sekkeh', name: 'سکه امامی', unit: 'تومان' },
+        { key: 'bahar', name: 'سکه بهار آزادی', unit: 'تومان' },
+        { key: 'nim', name: 'نیم سکه', unit: 'تومان' },
+        { key: 'rob', name: 'ربع سکه', unit: 'تومان' },
+        { key: 'gerami', name: 'سکه یک گرمی', unit: 'تومان' }
+    ];
+    
+    const goldItems = [];
+    
+    goldSymbols.forEach(symbol => {
+        if (apiData[symbol.key] && apiData[symbol.key].value) {
+            goldItems.push({
+                name: symbol.name,
+                price: parseFloat(apiData[symbol.key].value),
+                unit: symbol.unit
+            });
+        }
+    });
+    
+    // اگر داده‌ای از API نیامد، از داده‌های پشتیبان استفاده کن
+    if (goldItems.length === 0) {
+        return getGoldDataHTML();
+    }
+    
+    return goldItems.map(item => {
+        return `
+            <div class="currency-item gold">
+                <div class="currency-header">
+                    <span class="currency-name">${item.name}</span>
+                </div>
+                <div class="currency-price">
+                    ${formatNumber(item.price)} <span class="currency-unit">${item.unit}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ساخت HTML برای داده‌های ارز خارجی از API
+function getCurrencyDataFromAPI(apiData) {
+    const currencySymbols = [
+        // ارزهای اصلی
+        { key: 'usd', name: 'دلار آمریکا (USD)', type: 'main' },
+        { key: 'eur', name: 'یورو (EUR)', type: 'main' },
+        { key: 'gbp', name: 'پوند انگلیس (GBP)', type: 'main' },
+        { key: 'aed', name: 'درهم امارات (AED)', type: 'main' },
+        { key: 'try', name: 'لیر ترکیه (TRY)', type: 'main' },
+        { key: 'cad', name: 'دلار کانادا (CAD)', type: 'main' },
+        { key: 'aud', name: 'دلار استرالیا (AUD)', type: 'main' },
+        { key: 'cny', name: 'یوآن چین (CNY)', type: 'main' },
+        
+        // سایر ارزها
+        { key: 'afn', name: 'افغانی (AFN)', type: 'other' },
+        { key: 'thb', name: 'بات تایلند (THB)', type: 'other' },
+        { key: 'amd', name: 'درام ارمنستان (AMD)', type: 'other' },
+        { key: 'bhd', name: 'دینار بحرین (BHD)', type: 'other' },
+        { key: 'iqd', name: 'دینار عراق (IQD)', type: 'other' },
+        { key: 'kwd', name: 'دینار کویت (KWD)', type: 'other' },
+        { key: 'rub', name: 'روبل روسیه (RUB)', type: 'other' },
+        { key: 'pkr', name: 'روپیه پاکستان (PKR)', type: 'other' },
+        { key: 'inr', name: 'روپیه هند (INR)', type: 'other' },
+        { key: 'sar', name: 'ریال عربستان (SAR)', type: 'other' },
+        { key: 'omr', name: 'ریال عمان (OMR)', type: 'other' },
+        { key: 'qar', name: 'ریال قطر (QAR)', type: 'other' },
+        { key: 'myr', name: 'رینگیت مالزی (MYR)', type: 'other' },
+        { key: 'chf', name: 'فرانک سوئیس (CHF)', type: 'other' },
+        { key: 'sek', name: 'کرون سوئد (SEK)', type: 'other' },
+        { key: 'gel', name: 'لاری گرجستان (GEL)', type: 'other' },
+        { key: 'syp', name: 'لیره سوریه (SYP)', type: 'other' },
+        { key: 'azn', name: 'منات آذربایجان (AZN)', type: 'other' },
+        { key: 'jpy', name: 'یکصد ین ژاپن (JPY)', type: 'other' }
+    ];
+    
+    const currencyItems = [];
+    
+    currencySymbols.forEach(symbol => {
+        if (apiData[symbol.key] && apiData[symbol.key].value) {
+            currencyItems.push({
+                name: symbol.name,
+                price: parseFloat(apiData[symbol.key].value),
+                type: symbol.type
+            });
+        }
+    });
+    
+    // اگر داده‌ای از API نیامد، از داده‌های پشتیبان استفاده کن
+    if (currencyItems.length === 0) {
+        return getCurrencyDataHTML();
+    }
+    
+    return currencyItems.map(item => {
+        return `
+            <div class="currency-item forex">
+                <div class="currency-header">
+                    <span class="currency-name">${item.name}</span>
+                </div>
+                <div class="currency-price">
+                    ${formatNumber(item.price)} <span class="currency-unit">تومان</span>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 // ساخت HTML برای داده‌های ارز دیجیتال از API
@@ -630,18 +824,17 @@ function getFallbackCryptoHTML() {
     }).join('');
 }
 
-// ساخت HTML برای داده‌های طلا
+// ساخت HTML برای داده‌های طلا - با قیمت‌های جدید
 function getGoldDataHTML() {
     const goldData = [
-        { name: "طلای 18 عیار", price: 8620500, unit: "تومان" },
-        { name: "طلای 24 عیار", price: 11494000, unit: "تومان" },
-        { name: "طلای آب‌شده نقدی", price: 11250000, unit: "تومان" },
-        { name: "انس طلا", price: 2610, unit: "دلار" },
-        { name: "سکه امامی", price: 92010000, unit: "تومان" },
-        { name: "سکه بهار آزادی", price: 90500000, unit: "تومان" },
-        { name: "نیم سکه", price: 51000000, unit: "تومان" },
-        { name: "ربع سکه", price: 31000000, unit: "تومان" },
-        { name: "سکه یک گرمی", price: 18500000, unit: "تومان" }
+        { name: "طلای 18 عیار", price: 10593060, unit: "تومان" },
+        { name: "طلای آب‌شده", price: 45890, unit: "تومان" },
+        { name: "انس طلا", price: 4002.93, unit: "دلار" },
+        { name: "سکه امامی", price: 111600, unit: "تومان" },
+        { name: "سکه بهار آزادی", price: 105100, unit: "تومان" },
+        { name: "نیم سکه", price: 58100, unit: "تومان" },
+        { name: "ربع سکه", price: 33800, unit: "تومان" },
+        { name: "سکه یک گرمی", price: 16500, unit: "تومان" }
     ];
     
     return goldData.map(item => {
@@ -658,39 +851,39 @@ function getGoldDataHTML() {
     }).join('');
 }
 
-// ساخت HTML برای داده‌های ارز خارجی
+// ساخت HTML برای داده‌های ارز خارجی - با قیمت‌های جدید
 function getCurrencyDataHTML() {
     const currencyData = [
         // ارزهای اصلی
-        { name: "دلار آمریکا (USD)", price: 101640, unit: "تومان" },
-        { name: "یورو (EUR)", price: 118660, unit: "تومان" },
-        { name: "پوند انگلیس (GBP)", price: 136920, unit: "تومان" },
-        { name: "درهم امارات (AED)", price: 27852, unit: "تومان" },
-        { name: "لیر ترکیه (TRY)", price: 2480, unit: "تومان" },
-        { name: "دلار کانادا (CAD)", price: 76000, unit: "تومان" },
-        { name: "دلار استرالیا (AUD)", price: 70000, unit: "تومان" },
-        { name: "یوآن چین (CNY)", price: 14240, unit: "تومان" },
+        { name: "دلار آمریکا (USD)", price: 108750, unit: "تومان" },
+        { name: "یورو (EUR)", price: 126140, unit: "تومان" },
+        { name: "پوند انگلیس (GBP)", price: 143060, unit: "تومان" },
+        { name: "درهم امارات (AED)", price: 29890, unit: "تومان" },
+        { name: "لیر ترکیه (TRY)", price: 2590, unit: "تومان" },
+        { name: "دلار کانادا (CAD)", price: 77390, unit: "تومان" },
+        { name: "دلار استرالیا (AUD)", price: 71370, unit: "تومان" },
+        { name: "یوآن چین (CNY)", price: 15280, unit: "تومان" },
         
-        // ارزهای اضافی
-        { name: "افغانی (AFN)", price: 1350, unit: "تومان" },
-        { name: "بات تایلند (THB)", price: 3120, unit: "تومان" },
-        { name: "درام ارمنستان (AMD)", price: 254, unit: "تومان" },
-        { name: "دینار بحرین (BHD)", price: 269700, unit: "تومان" },
-        { name: "دینار عراق (IQD)", price: 77, unit: "تومان" },
-        { name: "دینار کویت (KWD)", price: 332000, unit: "تومان" },
-        { name: "روبل روسیه (RUB)", price: 1185, unit: "تومان" },
-        { name: "روپیه پاکستان (PKR)", price: 365, unit: "تومان" },
-        { name: "روپیه هند (INR)", price: 1220, unit: "تومان" },
-        { name: "ریال عربستان (SAR)", price: 27100, unit: "تومان" },
-        { name: "ریال عمان (OMR)", price: 264000, unit: "تومان" },
-        { name: "ریال قطر (QAR)", price: 27900, unit: "تومان" },
-        { name: "رینگیت مالزی (MYR)", price: 23700, unit: "تومان" },
-        { name: "فرانک سوئیس (CHF)", price: 119000, unit: "تومان" },
-        { name: "کرون سوئد (SEK)", price: 10150, unit: "تومان" },
-        { name: "لاری گرجستان (GEL)", price: 37500, unit: "تومان" },
-        { name: "لیر سوریه (SYP)", price: 8, unit: "تومان" },
-        { name: "منات آذربایجان (AZN)", price: 59800, unit: "تومان" },
-        { name: "یکصد ین ژاپن (JPY)", price: 69500, unit: "تومان" }
+        // سایر ارزها
+        { name: "افغانی (AFN)", price: 1635, unit: "تومان" },
+        { name: "بات تایلند (THB)", price: 3355, unit: "تومان" },
+        { name: "درام ارمنستان (AMD)", price: 285.14, unit: "تومان" },
+        { name: "دینار بحرین (BHD)", price: 289990, unit: "تومان" },
+        { name: "دینار عراق (IQD)", price: 83.25, unit: "تومان" },
+        { name: "دینار کویت (KWD)", price: 354330, unit: "تومان" },
+        { name: "روبل روسیه (RUB)", price: 1355, unit: "تومان" },
+        { name: "روپیه پاکستان (PKR)", price: 385.12, unit: "تومان" },
+        { name: "روپیه هند (INR)", price: 1225, unit: "تومان" },
+        { name: "ریال عربستان (SAR)", price: 29000, unit: "تومان" },
+        { name: "ریال عمان (OMR)", price: 284280, unit: "تومان" },
+        { name: "ریال قطر (QAR)", price: 29920, unit: "تومان" },
+        { name: "رینگیت مالزی (MYR)", price: 25970, unit: "تومان" },
+        { name: "فرانک سوئیس (CHF)", price: 135060, unit: "تومان" },
+        { name: "کرون سوئد (SEK)", price: 11450, unit: "تومان" },
+        { name: "لاری گرجستان (GEL)", price: 40050, unit: "تومان" },
+        { name: "لیره سوریه (SYP)", price: 9.84, unit: "تومان" },
+        { name: "منات آذربایجان (AZN)", price: 63820, unit: "تومان" },
+        { name: "یکصد ین ژاپن (JPY)", price: 705, unit: "تومان" }
     ];
     
     return currencyData.map(item => {
