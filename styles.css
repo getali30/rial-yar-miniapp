@@ -80,7 +80,69 @@ body {
     box-shadow: 0 10px 28px 0 rgba(60,60,60,0.18), 0 2px 8px rgba(60,60,60,0.07) inset;
     border: 1px solid #e0e0e0;
     overflow: hidden;
+    position: relative;
 }
+
+/* سیستم loading جدید با blur */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 1;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.loading-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.loading-overlay .loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid rgba(46, 125, 50, 0.2);
+    border-top-color: #2E7D32;
+    border-radius: 50%;
+    animation: spin 1s infinite linear;
+    margin-bottom: 20px;
+}
+
+.loading-overlay p {
+    font-size: 1.1rem;
+    color: #2E7D32;
+    font-weight: bold;
+    font-family: 'BTitr', 'IRANSans', Tahoma, Arial, sans-serif;
+}
+
+/* حذف loading های قدیمی */
+.loading-container {
+    display: none !important;
+}
+
+body.dark .loading-overlay {
+    background: rgba(30, 30, 30, 0.95);
+}
+
+body.dark .loading-overlay p {
+    color: #4CAF50;
+}
+
+body.dark .loading-overlay .loading-spinner {
+    border: 4px solid rgba(76, 175, 80, 0.2);
+    border-top-color: #4CAF50;
+}
+
 header {
     text-align: right;
     margin-bottom: 20px;
@@ -333,39 +395,37 @@ input::placeholder {
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-bottom: 25px; /* کاهش فاصله بین لوگو و دکمه‌ها */
-    padding: 15px 0; /* کاهش فاصله کلی */
+    margin-bottom: 25px;
+    padding: 15px 0;
 }
 .app-logo {
-    width: 190px; /* افزایش 10 واحد به اندازه لوگو */
-    height: 190px; /* افزایش 10 واحد به اندازه لوگو */
+    width: 190px;
+    height: 190px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 0; /* حذف فاصله بین لوگو و توضیحات */
+    margin-bottom: 0;
 }
 .app-logo img {
-    width: 190px; /* افزایش 10 واحد به اندازه لوگو */
-    height: 190px; /* افزایش 10 واحد به اندازه لوگو */
+    width: 190px;
+    height: 190px;
     animation: pulse 3s infinite;
     user-drag: none;
     -webkit-user-drag: none;
     pointer-events: none;
 }
 
-/* توضیحات سایت */
 .app-description {
     text-align: center;
-    margin-top: 0; /* حذف فاصله بین لوگو و توضیحات */
+    margin-top: 0;
 }
 .app-description p {
     font-family: 'BNazanin', Tahoma, Arial, sans-serif;
-    font-size: 1.1rem; /* افزایش اندازه فونت */
-    margin-bottom: 2px; /* کاهش فاصله بین خطوط توضیحات */
+    font-size: 1.1rem;
+    margin-bottom: 2px;
     color: #555;
 }
 
-/* تنها یک لوگو برای هر دو حالت */
 .app-logo .logo-light.logo-dark {
     display: block;
 }
@@ -432,15 +492,15 @@ input::placeholder {
     margin: 0;
     flex-grow: 1;
     text-align: center;
-    margin-right: -40px; /* برای جبران دکمه بازگشت */
+    margin-right: -40px;
 }
 .back-button {
     background: linear-gradient(145deg, #e0e0e0 0%, #fafafa 100%);
     border: none;
     cursor: pointer;
     color: #2E7D32;
-    width: 46px; /* کوچک‌تر کردن دکمه برگشت */
-    height: 46px; /* کوچک‌تر کردن دکمه برگشت */
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -462,7 +522,7 @@ input::placeholder {
 }
 .back-button i {
     margin: 0;
-    font-size: 24px; /* کوچک‌تر کردن آیکون */
+    font-size: 24px;
 }
 
 /* صفحه قیمت ارز */
@@ -485,7 +545,6 @@ input::placeholder {
     transition: all 0.3s;
 }
 
-/* رنگ‌های مختلف برای تب‌ها */
 .tab-gold {
     color: #b8860b;
 }
@@ -516,7 +575,7 @@ input::placeholder {
     display: block;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    max-height: 70vh; /* حداکثر ارتفاع برای اطمینان از قابلیت اسکرول */
+    max-height: 70vh;
     padding-bottom: 20px;
 }
 .currency-section.hidden {
@@ -596,34 +655,6 @@ input::placeholder {
 .currency-unit {
     font-size: 0.8rem;
     color: #666;
-}
-.loading-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 0;
-}
-.loading-spinner {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    animation: spin 1s infinite linear;
-    margin-bottom: 15px;
-}
-
-/* رنگ‌های مختلف برای لودینگ هر تب */
-.gold-loading .loading-spinner {
-    border: 3px solid rgba(255, 215, 0, 0.2);
-    border-top-color: #FFD700;
-}
-.forex-loading .loading-spinner {
-    border: 3px solid rgba(76, 175, 80, 0.2);
-    border-top-color: #4CAF50;
-}
-.crypto-loading .loading-spinner {
-    border: 3px solid rgba(63, 81, 181, 0.2);
-    border-top-color: #3F51B5;
 }
 
 @keyframes spin {
@@ -814,7 +845,6 @@ body.dark .app-description p {
     color: #BDBDBD;
 }
 
-/* رنگ‌های تب‌ها در حالت دارک */
 body.dark .tab-gold {
     color: #D4AF37;
 }
